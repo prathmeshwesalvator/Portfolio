@@ -1,93 +1,133 @@
-document.addEventListener('DOMContentLoaded', function () {
-    // Ensure the page starts at the top
-     window.scrollTo(0, 0);
- 
-     // Fade-in sections on scroll
-     const sections = document.querySelectorAll('.fade-in');
-     const observer = new IntersectionObserver((entries) => {
-         entries.forEach(entry => {
-             if (entry.isIntersecting) {
-                 entry.target.classList.add('visible');
-                 observer.unobserve(entry.target);
-             }
-         });
-     });
-     sections.forEach(section => observer.observe(section));
- 
-   
- 
-     // EmailJS initialization
-     emailjs.init("e9FlhRJjLFXGBd7r7"); // Replace with your EmailJS public key
- 
-     // Function to get visitor info
-     async function getVisitorInfo() {
-         try {
-             const response = await fetch('https://ipinfo.io/json?token=38a0a1e3004a83'); // Replace with your IP info token
-             if (!response.ok) throw new Error('Failed to fetch visitor info');
-             return await response.json();
-         } catch (error) {
-             console.error('Error fetching visitor info:', error);
-             return null; // Handle error gracefully
-         }
-     }
- 
-     // Notify via EmailJS on page load
-     async function notifyVisitor() {
-         const visitorInfo = await getVisitorInfo();
-         const browserDetails = `${navigator.userAgent} | Platform: ${navigator.platform}`;
- 
-         const templateParams = {
-             email: visitorInfo?.email || 'N/A', // Note: IP info does not usually provide email
-             ip: visitorInfo?.ip || 'N/A',
-             location: visitorInfo ? `${visitorInfo.city}, ${visitorInfo.region}` : 'N/A',
-             isp: visitorInfo?.org || 'N/A',
-             browser: browserDetails,
-             time: new Date().toLocaleString()
-         };
- 
-         emailjs.send("service_ienmgjl", "template_ntsejph", templateParams)
-             .then(function(response) {
-                 console.log("Email sent successfully!", response.status, response.text);
-             }, function(error) {
-                 console.error("Failed to send email:", error);
-             });
-     }
- 
-     // Send email on page load
-     notifyVisitor();
- 
-     // Handle contact form submission with validation and EmailJS
-     const form = document.getElementById('form');
-     form.addEventListener('submit', function (e) {
-         e.preventDefault(); // Prevent default form submission
- 
-         // Form validation logic
-         const name = form.name.value.trim();
-         const email = form.email.value.trim();
-         const message = form.message.value.trim();
-         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
- 
-         if (name === '') {
-             alert('Please enter your name.');
-             return;
-         }
-         if (email === '' || !emailRegex.test(email)) {
-             alert('Please enter a valid email address.');
-             return;
-         }
-   
-         if (message === '') {
-             alert('Please enter your message.');
-             return;
-         }
- 
-         // Send the form via EmailJS
-         emailjs.sendForm('service_2pcybcm', 'template_8vhhy7d', form)
-             .then(function () {
-                 alert('Message sent successfully!');
-                 form.reset(); // Clear the form
-             }, function (error) {
-                 alert('Failed to send message. Error: ' + JSON.stringify(error));
-             });
-     });
- });
+/* ===========================
+   PRATHMESH MORE — PORTFOLIO
+   script.js  (v2)
+   =========================== */
+
+/* ── Nav scroll shrink ──────────────────────── */
+const nav = document.getElementById('nav');
+const onScroll = () => nav.classList.toggle('scrolled', window.scrollY > 50);
+window.addEventListener('scroll', onScroll, { passive: true });
+
+/* ── Mobile menu ────────────────────────────── */
+const hamburger = document.getElementById('hamburger');
+const mobileMenu = document.getElementById('mobile-menu');
+const mobileClose = document.getElementById('mobile-close');
+
+function openMobileMenu() {
+    mobileMenu.classList.add('open');
+    hamburger.classList.add('open');
+    hamburger.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeMobileMenu() {
+    mobileMenu.classList.remove('open');
+    hamburger.classList.remove('open');
+    hamburger.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = '';
+}
+
+hamburger.addEventListener('click', () => {
+    mobileMenu.classList.contains('open') ? closeMobileMenu() : openMobileMenu();
+});
+mobileClose.addEventListener('click', closeMobileMenu);
+
+// Close on outside tap
+mobileMenu.addEventListener('click', (e) => {
+    if (e.target === mobileMenu) closeMobileMenu();
+});
+
+// Close on Escape
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && mobileMenu.classList.contains('open')) closeMobileMenu();
+});
+
+/* ── Scroll reveal ──────────────────────────── */
+const revealEls = document.querySelectorAll('.reveal');
+const revealObs = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            revealObs.unobserve(entry.target); // fire once only
+        }
+    });
+}, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+revealEls.forEach(el => revealObs.observe(el));
+
+/* ── Active nav link highlighting ───────────── */
+const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('.nav-links a');
+
+const sectionObs = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            const id = entry.target.getAttribute('id');
+            navLinks.forEach(link => {
+                link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+            });
+        }
+    });
+}, { threshold: 0.35 });
+sections.forEach(s => sectionObs.observe(s));
+
+/* ── Contact form ───────────────────────────── */
+const form = document.getElementById('contact-form');
+const submitBtn = document.getElementById('submit-btn');
+const successMsg = document.getElementById('success-msg');
+
+form.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    // Basic validation
+    const name = form.querySelector('#fname').value.trim();
+    const email = form.querySelector('#femail').value.trim();
+    const msg = form.querySelector('#fmsg').value.trim();
+    if (!name || !email || !msg) return;
+
+    submitBtn.textContent = 'Sending…';
+    submitBtn.disabled = true;
+
+    // Simulate async send — replace with EmailJS / Formspree in production
+    setTimeout(() => {
+        form.reset();
+        submitBtn.textContent = '✓ Sent!';
+        submitBtn.style.background = '#22c55e';
+        successMsg.classList.add('show');
+        successMsg.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+        setTimeout(() => {
+            submitBtn.textContent = 'Send Message';
+            submitBtn.style.background = '';
+            submitBtn.disabled = false;
+            successMsg.classList.remove('show');
+        }, 4000);
+    }, 1200);
+});
+
+/* ── Subtle cursor glow (desktop pointer only) ── */
+if (window.matchMedia('(pointer:fine) and (min-width:860px)').matches) {
+    const glow = document.createElement('div');
+    glow.style.cssText = [
+        'position:fixed', 'width:320px', 'height:320px', 'border-radius:50%',
+        'background:radial-gradient(circle,rgba(0,230,140,.04) 0%,transparent 70%)',
+        'pointer-events:none', 'transform:translate(-50%,-50%)',
+        'transition:left .15s ease,top .15s ease', 'z-index:9998',
+        'will-change:left,top'
+    ].join(';');
+    document.body.appendChild(glow);
+    document.addEventListener('mousemove', e => {
+        glow.style.left = e.clientX + 'px';
+        glow.style.top = e.clientY + 'px';
+    }, { passive: true });
+}
+
+/* ── Smooth scroll polyfill fallback ───────── */
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+        const target = document.querySelector(a.getAttribute('href'));
+        if (target) {
+            e.preventDefault();
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    });
+});
