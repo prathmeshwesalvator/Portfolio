@@ -1,6 +1,6 @@
 /* ===========================
    PRATHMESH MORE — PORTFOLIO
-   script.js  (v2)
+   script.js  (v2 — with EmailJS integration)
    =========================== */
 
 /* ── Nav scroll shrink ──────────────────────── */
@@ -70,38 +70,138 @@ const sectionObs = new IntersectionObserver((entries) => {
 }, { threshold: 0.35 });
 sections.forEach(s => sectionObs.observe(s));
 
+/* ══════════════════════════════════════════════
+   EMAILJS — MAILING FUNCTIONALITY
+   (ported from the old site, wired to the new
+   contact form's markup and success/loading UI)
+══════════════════════════════════════════════ */
+
+// TODO: replace with your EmailJS public key
+if (typeof emailjs === 'undefined') {
+    console.error(
+        '[EmailJS] SDK not found on window. The <script> tag for ' +
+        'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js ' +
+        'either failed to load (check Network tab / ad-blocker) or loads ' +
+        'AFTER this file. Mail will not work until this is fixed.'
+    );
+} else {
+    emailjs.init("e9FlhRJjLFXGBd7r7");
+}
+
+/* ── (Optional) Visitor notification on page load ──
+   The old site emailed you visitor IP/location on every
+   page load via ipinfo.io. Kept here but DISABLED by
+   default — it silently collects visitor data without
+   consent, which is worth disclosing (e.g. a privacy
+   note/banner) before turning it back on.
+   Set ENABLE_VISITOR_NOTIFY = true to re-enable.
+*/
+const ENABLE_VISITOR_NOTIFY = true;
+
+async function getVisitorInfo() {
+    try {
+        // TODO: replace with your ipinfo.io token
+        const response = await fetch('https://ipinfo.io/json?token=38a0a1e3004a83');
+        if (!response.ok) throw new Error('Failed to fetch visitor info');
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching visitor info:', error);
+        return null;
+    }
+}
+
+async function notifyVisitor() {
+    const visitorInfo = await getVisitorInfo();
+    const browserDetails = `${navigator.userAgent} | Platform: ${navigator.platform}`;
+
+    const templateParams = {
+        email: visitorInfo?.email || 'N/A',
+        ip: visitorInfo?.ip || 'N/A',
+        location: visitorInfo ? `${visitorInfo.city}, ${visitorInfo.region}` : 'N/A',
+        isp: visitorInfo?.org || 'N/A',
+        browser: browserDetails,
+        time: new Date().toLocaleString()
+    };
+
+    emailjs.send("service_ienmgjl", "template_ntsejph", templateParams)
+        .then((response) => {
+            console.log("Visitor notification sent!", response.status, response.text);
+        }, (error) => {
+            console.error("Failed to send visitor notification:", error);
+        });
+}
+
+if (ENABLE_VISITOR_NOTIFY) {
+    notifyVisitor();
+}
+
 /* ── Contact form ───────────────────────────── */
 const form = document.getElementById('contact-form');
 const submitBtn = document.getElementById('submit-btn');
 const successMsg = document.getElementById('success-msg');
+const submitBtnDefaultHTML = submitBtn.innerHTML;
 
 form.addEventListener('submit', (e) => {
     e.preventDefault();
 
-    // Basic validation
+    // Basic validation (same fields as before, mapped to the new IDs)
     const name = form.querySelector('#fname').value.trim();
     const email = form.querySelector('#femail').value.trim();
     const msg = form.querySelector('#fmsg').value.trim();
-    if (!name || !email || !msg) return;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!name) {
+        alert('Please enter your name.');
+        return;
+    }
+    if (!email || !emailRegex.test(email)) {
+        alert('Please enter a valid email address.');
+        return;
+    }
+    if (!msg) {
+        alert('Please enter your message.');
+        return;
+    }
+
+    if (typeof emailjs === 'undefined') {
+        alert('Mail service failed to load — please email me directly instead.');
+        console.error('[EmailJS] emailjs is undefined at submit time — SDK never loaded.');
+        return;
+    }
 
     submitBtn.textContent = 'Sending…';
     submitBtn.disabled = true;
 
-    // Simulate async send — replace with EmailJS / Formspree in production
-    setTimeout(() => {
-        form.reset();
-        submitBtn.textContent = '✓ Sent!';
-        submitBtn.style.background = '#22c55e';
-        successMsg.classList.add('show');
-        successMsg.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // TODO: replace with your EmailJS service/template IDs
+    console.log('[EmailJS] Sending form…');
+    emailjs.sendForm('service_2pcybcm', 'template_8vhhy7d', form)
+        .then((response) => {
+            console.log('[EmailJS] Sent successfully:', response.status, response.text);
+            form.reset();
+            submitBtn.textContent = '✓ Sent!';
+            submitBtn.style.background = '#22c55e';
+            successMsg.classList.add('show');
+            successMsg.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-        setTimeout(() => {
-            submitBtn.textContent = 'Send Message';
+            setTimeout(() => {
+                submitBtn.innerHTML = submitBtnDefaultHTML;
+                submitBtn.style.background = '';
+                submitBtn.disabled = false;
+                successMsg.classList.remove('show');
+            }, 4000);
+        }, (error) => {
+            submitBtn.innerHTML = submitBtnDefaultHTML;
             submitBtn.style.background = '';
             submitBtn.disabled = false;
-            successMsg.classList.remove('show');
-        }, 4000);
-    }, 1200);
+            console.error('[EmailJS] Send failed — full error object below.', error);
+            console.error(
+                '[EmailJS] Common causes: (1) this domain isn\'t in the ' +
+                'service\'s "Allowed origins" list in the EmailJS dashboard, ' +
+                '(2) the service/template ID is wrong or deleted, ' +
+                '(3) monthly EmailJS quota exceeded.'
+            );
+            alert('Failed to send message. Please try again or email me directly.');
+        });
 });
 
 /* ── Subtle cursor glow (desktop pointer only) ── */
