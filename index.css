@@ -1014,9 +1014,10 @@ body::after {
     flex: 1;
 }
 
-.project-footer {
-    margin-top: clamp(14px, 2vw, 22px);
-}
+.project-footer .arrow-link i {
+     font-size: 1rem;
+     color: var(--accent);
+ }
 
 
 /* ══════════════════════════════════════════════
